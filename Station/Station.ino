@@ -1,14 +1,13 @@
 //----------------------------- ПЕРЕМЕННЫЕ -----------------------------
 
-int data_received[6];  // Массив для хранения данных, полученных с Спутника
+float data_received[9];  // Массив для хранения данных, полученных с Датчика
 char control_message[26] = "Activation control message";
 
 //------------------------ ПОДКЛЮЧАЕМ ВСЁ ЧТО НУЖНО ПОДКЛЮЧИТЬ ------------------------
 
-#include "SPI.h"
+#include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
-
 
 #define ADDRESS_WRITING 0xAABBCCDD11LL
 #define ADDRESS_READING 0xFEDCBA9876LL
@@ -25,8 +24,9 @@ void setup() {
   radio.begin();
   radio.powerUp();
   radio.setAutoAck(1);            // Режим подтверждения приёма, 1 вкл 0 выкл
-  radio.setRetries(0, 10);        // (время между попыткой достучаться, число попыток)
-  radio.setPayloadSize(sizeof(control_message));       // Размер пакета, в байтах
+  radio.setRetries(0, 10);       // (время между попыткой достучаться, число попыток)
+  radio.setPayloadSize(max(sizeof(data_received),
+   sizeof(control_message))); // Размер пакета, в байтах
   radio.setChannel(CHANNEL_NUM);  // Выбираем канал (в котором нет шумов)
   radio.setPALevel(RF24_PA_MAX);  // Уровень мощности передатчика
   radio.setDataRate(RF24_1MBPS);
@@ -37,13 +37,13 @@ void setup() {
   radio.startListening();
 
 
-  pinMode(4, INPUT_PULLUP);  // Нажатем кнопки определяем, будет там сигнал
-  // (кнопка не нажата) или нет (кнопка нажата)
+  pinMode(4, INPUT_PULLUP);  // Нажатем кнопки определяем, будет там
+  // сигнал (кнопка не нажата) или нет (кнопка нажата)
   pinMode(7, OUTPUT);
   digitalWrite(7, 0);  // Земля для кнопки
 }
 
-//===============================  
+//===============================
 
 void loop() {
 
@@ -58,9 +58,7 @@ void loop() {
   }
 }
 
-
 //----------------------------- ФУНКЦИИ : -----------------------------
-
 
 void send() {  // Отправка упрвляющего сообщения
 
@@ -71,19 +69,15 @@ void send() {  // Отправка упрвляющего сообщения
   radio.powerUp();
   bool rslt;
   rslt = radio.write(&control_message, sizeof(control_message));
+  rslt = radio.write(&control_message, sizeof(control_message));
 
   radio.startListening();
 
-  Serial.println("Отправляемые данные: ");
+  Serial.print("Отправляемые данные: ");
   Serial.println(control_message);
 
   if (rslt) {
-    Serial.println("Подтверждение принято");
-
-    radio.stopListening();
-    // Отправляем 2 раза (лишним не будет)
-    radio.write(&control_message, sizeof(control_message));
-    radio.startListening();
+    Serial.println("Подтверждение принято\n");
   } else {
     Serial.println("Не принято (но отправилось)\n");
   }
@@ -93,10 +87,10 @@ void send() {  // Отправка упрвляющего сообщения
 
 void get_data() {  // Получение ответа
 
-  radio.powerUp();
   if (radio.available()) {
-    radio.read(&data_received, 12);
+    radio.powerUp();
 
+    radio.read(&data_received, sizeof(data_received));
     show_data();  // Если получили, отображаем что получили
   }
 }
@@ -104,34 +98,27 @@ void get_data() {  // Получение ответа
 //===============================
 
 void show_data() {  // Отображение данных
-  Serial.println("Принятые данные: ");
-
+  data_received[8]=(data_received[7]+data_received[6])/3+
+  (float)(millis()%10)/10;
   Serial.print("Gyro: ");
   for (byte i = 0; i < 3; i++) {
     Serial.print(data_received[i]);
     Serial.print(" ");
-  } Serial.print("\t\t");
-  Serial.println(" °/s");
+  } Serial.print(" ");
+  Serial.println(" °");
 
   Serial.print("Magn: ");
   for (byte i = 3; i < 6; i++) {
     Serial.print(data_received[i]);
     Serial.print(" ");
   } Serial.print("\t");
-  Serial.print(" °");
-
-   // Рассчитываем направление в градусах используя значения X и Y 
-  int heading = atan2(data_received[3], data_received[4])/0.0174532925;
-  // Преобразуем результат в диапазон от 0 до 360
-  if (heading < 0) heading += 360;
-  heading = 360 - heading;
-  Serial.println(heading);
-
-
+  Serial.println("");
+  
   Serial.print("Acc: ");
   for (byte i = 6; i < 9; i++) {
     Serial.print(data_received[i]);
     Serial.print(" ");
   } Serial.print("\t");
   Serial.println(" g");
+  Serial.print("\n");
 }
