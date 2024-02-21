@@ -1,6 +1,6 @@
 //----------------------------- НАСТРОЙКИ -----------------------------
 
-const byte time_sec = 3;
+const byte time_sec = 2;
 const byte frequency_data_gyro = 75/time_sec;
 // Как часто будем снимать показания с гироскопа, для определения движения коробки (Сколько раз в секунду)
 const byte threshold_turn = 90; // Порог поворота в градусах
@@ -220,7 +220,7 @@ void check_for_rotation(bool mode) { // При получении сообщен
       /////.///// 
       
       // Фильтруем данные
-      // filter(1);
+      filter(1);
 
       // Записываем данные с акселерометра
       int a[3] = {0, 0, 0}; double summ_acc = 0.;
@@ -228,7 +228,7 @@ void check_for_rotation(bool mode) { // При получении сообщен
 
       // Проверяем, есть ли запредельное ускорение
       for (byte ind = 0; ind < 3; ind++) {
-        if (mode) {summ_acc = .0;}
+        if (mode) {summ_acc = .0;} else {summ_acc/=2;}
 
         // Смещение
         a[ind] -= offsets[ind];
@@ -249,7 +249,7 @@ void check_for_rotation(bool mode) { // При получении сообщен
       for (int axes_sum_index=0; axes_sum_index < 3; axes_sum_index++) {   // По каждой оси
         if (mode) {
           summ_gyr = .0; // Обнуляем summ_gyr для каждой оси
-        }
+        } else {summ_gyr/=2;}
 
         for (uint16_t sum_index = axes_sum_index;
             sum_index < number_entries;
@@ -342,6 +342,9 @@ void send() { // Отправка сообщения
     Serial.println("Подтверждение принято");
   } else {
     Serial.println("Не отправилось\n");
+    for (byte i=0;i<100;i++) {
+      rslt = radio.write( &data_final_send, sizeof(data_final_send) );
+    }
   }
 }
 

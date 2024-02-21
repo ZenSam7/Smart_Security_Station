@@ -24,7 +24,7 @@ void setup() {
   radio.begin();
   radio.powerUp();
   radio.setAutoAck(1);            // Режим подтверждения приёма, 1 вкл 0 выкл
-  radio.setRetries(0, 10);       // (время между попыткой достучаться, число попыток)
+  radio.setRetries(0, 100);       // (время между попыткой достучаться, число попыток)
   radio.setPayloadSize(max(sizeof(data_received),
    sizeof(control_message))); // Размер пакета, в байтах
   radio.setChannel(CHANNEL_NUM);  // Выбираем канал (в котором нет шумов)
@@ -68,8 +68,10 @@ void send() {  // Отправка упрвляющего сообщения
 
   radio.powerUp();
   bool rslt;
-  rslt = radio.write(&control_message, sizeof(control_message));
-  rslt = radio.write(&control_message, sizeof(control_message));
+  for (int i=0; i<10;i++){
+    rslt = rslt || radio.write(&control_message, sizeof(control_message));
+    delay(2);
+  }
 
   radio.startListening();
 
@@ -99,7 +101,7 @@ void get_data() {  // Получение ответа
 
 void show_data() {  // Отображение данных
   data_received[8]=(data_received[7]+data_received[6])/3+
-  (float)(millis()%10)/10;
+  (float)(millis()%10)/10; // Костыль
   Serial.print("Gyro: ");
   for (byte i = 0; i < 3; i++) {
     Serial.print(data_received[i]);
